@@ -9,12 +9,13 @@ def read_program(filepath):
 
 class IntcodeComputer:
 
-    def __init__(self):
-        self.program = []
+    def __init__(self, program, phase):
+        self.program = program
         self.program_complete = False
         self.program_position = 0
-        self.inputs = []
+        self.inputs = [phase]
         self.output = 0
+        self.program_output = False
 
     def reset_program(self):
         self.program_complete = False
@@ -25,6 +26,7 @@ class IntcodeComputer:
 
     def process_output(self, output):
         self.output = output
+        self.program_output = True
 
     def parse_instruction(self, position):
         instruction = str(self.program[position])
@@ -134,7 +136,7 @@ class IntcodeComputer:
         else:
             raise Exception("Unknown opcode encountered.")
 
-    def run_program(self, program):
+    def run_program_part1(self, program):
         sequences = list(itertools.permutations([0, 1, 2, 3, 4]))
         thruster_signals = {}
 
@@ -155,9 +157,37 @@ class IntcodeComputer:
         max_thruster_signal = max(thruster_signals.keys())
         print("{} is the maximum output, by using the following phase setting sequence: {}".format(max_thruster_signal, thruster_signals[max_thruster_signal]))
 
+    def run_program_until_output(self):
+        self.program_output = False
+        while not self.program_output and not self.program_complete:
+            self.process_instruction()
+
+        return self.output
+
+
+def run_full_feedback_loop(program, phase_values):
+    amplifiers = [IntcodeComputer(program.copy(), phase) for phase in phase_values]
+    amplifier_index = 0
+    amp_output = 0
+
+    #  Continue looping until the final amplifier's program is complete
+    while not amplifiers[len(amplifiers) - 1].program_complete:
+        current_amp = amplifiers[amplifier_index]
+        current_amp.inputs.append(amp_output)
+        amp_output = current_amp.run_program_until_output()
+        amplifier_index = (amplifier_index + 1) % len(amplifiers)
+
+    return amp_output
+
 
 if __name__ == "__main__":
-    computer = IntcodeComputer()
-    prog = read_program(r"C:\Users\pafrankl\PycharmProjects\AdventOfCode\day07\amplifier_program.txt")
-    computer.run_program(prog)
+    prog = read_program(r"C:\Users\pafrankl\PycharmProjects\AdventOfCode\AoC2019\day07\amplifier_program.txt")
+    sequences = list(itertools.permutations([5, 6, 7, 8, 9]))
+    thruster_signals = {}
 
+    for phase_settings in sequences:
+        thruster_signals[run_full_feedback_loop(prog, phase_settings)] = phase_settings
+
+    max_thruster_signal = max(thruster_signals.keys())
+    print("{} is the maximum output, by using the following phase setting sequence: {}"
+          .format(max_thruster_signal, thruster_signals[max_thruster_signal]))
